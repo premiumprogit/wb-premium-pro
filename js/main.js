@@ -114,9 +114,9 @@ document.addEventListener('DOMContentLoaded', function () {
       consent_marketing: getCheckedValue(form, 'consent_marketing'),
       PLATAFORMA: platform,
       FONTE: window.location.href,
-      source: 'site',
+      source: (window.MG_LEAD_SOURCE || 'site'),
       source_detail: 'premiumprocontractors.com',
-      tags: ['site', 'premium pro', platform === 'ORGANIC' ? 'lp organic' : 'lp ' + platform.toLowerCase()],
+      tags: [(window.MG_LEAD_SOURCE || 'site'), 'premium pro', platform === 'ORGANIC' ? 'lp organic' : 'lp ' + platform.toLowerCase()],
       pipeline_stage: 'Novos leads',
       page_name: document.title,
       page_path: window.location.pathname,
@@ -201,6 +201,95 @@ document.addEventListener('DOMContentLoaded', function () {
 
     showStep(0);
   }
+
+  /* ── Lead popup (todos os CTAs abrem o mesmo step-form) ── */
+  function leadCardHTML(prefix) {
+    var p = prefix || 'pp';
+    return '' +
+      '<div class="lead-card__title">Get a Free Estimate</div>' +
+      '<div class="lead-card__sub">Answer one question at a time. Your request goes straight to our team.</div>' +
+      '<form data-feedback data-step-form action="#" method="POST">' +
+        '<div class="form-progress" aria-label="Estimate request progress">' +
+          '<div class="form-progress__bar"><span></span></div>' +
+          '<div class="form-progress__steps"><span class="active">Service</span><span>Name</span><span>Phone</span><span>Email</span></div>' +
+        '</div>' +
+        '<div class="form-step active" data-step="0"><div class="form__field">' +
+          '<label for="'+p+'-service">What do you need help with? *</label>' +
+          '<select id="'+p+'-service" name="service" required>' +
+            '<option value="">Select a service...</option>' +
+            '<option>Kitchen Remodeling</option><option>Bathroom Remodeling</option>' +
+            '<option>Home Additions</option><option>Interior Painting</option>' +
+            '<option>Exterior Painting</option><option>Cabinet Painting</option>' +
+            '<option>Carpentry &amp; Trim</option><option>Decks &amp; Patios</option>' +
+            '<option>Drywall / Insulation / Plaster</option><option>Framing</option>' +
+            '<option>Power Washing</option><option>Multiple Services</option>' +
+          '</select></div></div>' +
+        '<div class="form-step" data-step="1"><div class="form__field"><label for="'+p+'-name">What is your name? *</label><input type="text" id="'+p+'-name" name="name" required placeholder="John Smith" autocomplete="name"></div></div>' +
+        '<div class="form-step" data-step="2"><div class="form__field"><label for="'+p+'-phone">What number should we call or text? *</label><input type="tel" id="'+p+'-phone" name="phone" required placeholder="(617) 555-0100" autocomplete="tel"></div></div>' +
+        '<div class="form-step" data-step="3"><div class="form__field"><label for="'+p+'-email">What is your email? *</label><input type="email" id="'+p+'-email" name="email" required placeholder="john@email.com" autocomplete="email"></div>' +
+          '<p class="form__note">By submitting, you agree to our <a href="/privacy-policy">Privacy Policy</a> and <a href="/terms">Terms &amp; Conditions</a>. We use your contact information only to respond to your request.</p></div>' +
+        '<div class="form-nav">' +
+          '<button class="btn btn--ghost form-prev" type="button">Back</button>' +
+          '<button class="btn btn--primary btn--block form-next" type="button">Next</button>' +
+          '<button class="btn btn--primary btn--block form-submit" type="submit">Send Request</button>' +
+        '</div>' +
+      '</form>' +
+      '<div class="form__success" style="display:none;padding:20px 0;text-align:center;">' +
+        '<p style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:8px;">Request received.</p>' +
+        '<p>Claudiney or our team will reach out within 24 hours. If you prefer to speak with us now, you can call directly.</p>' +
+        '<div class="form__quick-actions"><a class="btn btn--primary btn--block" href="tel:' + (window.MG_CALL_NUMBER || '+19783547573') + '">Call Premium Pro</a></div>' +
+      '</div>';
+  }
+
+  (function initLeadPopup() {
+    if (document.getElementById('ppLeadOverlay')) return;
+    var st = document.createElement('style');
+    st.textContent =
+      '.pp-overlay{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:9998;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px}' +
+      '.pp-overlay.open{display:flex}' +
+      '.pp-modal{background:#fff;border-radius:16px;max-width:480px;width:100%;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.35);margin:auto}' +
+      '.pp-modal .lead-card{margin:0;box-shadow:none}' +
+      '.pp-close{position:absolute;top:10px;right:14px;background:none;border:0;font-size:30px;line-height:1;color:#94a3b8;cursor:pointer;z-index:2}' +
+      '.pp-close:hover{color:#0f172a}' +
+      '.pp-call-fab{position:fixed;right:20px;bottom:88px;z-index:9997;width:56px;height:56px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.3);text-decoration:none}' +
+      '.pp-call-fab:hover{filter:brightness(1.06)}';
+    document.head.appendChild(st);
+
+    var ov = document.createElement('div');
+    ov.className = 'pp-overlay';
+    ov.id = 'ppLeadOverlay';
+    ov.innerHTML = '<div class="pp-modal" role="dialog" aria-modal="true" aria-label="Get a Free Estimate">' +
+      '<button class="pp-close" type="button" aria-label="Close">&times;</button>' +
+      '<div class="lead-card" style="padding:26px 22px">' + leadCardHTML('pp') + '</div></div>';
+    document.body.appendChild(ov);
+
+    function openPopup(e) { if (e) e.preventDefault(); ov.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closePopup() { ov.classList.remove('open'); document.body.style.overflow = ''; }
+    ov.querySelector('.pp-close').addEventListener('click', closePopup);
+    ov.addEventListener('click', function (e) { if (e.target === ov) closePopup(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePopup(); });
+    window.PP_openLeadPopup = openPopup;
+
+    // Todos os CTAs de conversão abrem o popup (site inteiro)
+    var CTA_TXT = /free estimate|get (a )?(free )?(estimate|quote)|request (a |your )?(free )?(quote|estimate)|get started|book|schedule|contact us|start (your |my )?project/i;
+    var els = document.querySelectorAll('a, button');
+    Array.prototype.forEach.call(els, function (el) {
+      if (el.closest('form') || el.closest('.pp-modal')) return;      // não mexe em botões de form/popup
+      var href = (el.getAttribute('href') || '').toLowerCase();
+      if (href.indexOf('tel:') === 0 || href.indexOf('mailto:') === 0) return; // ligação/email seguem
+      var txt = (el.textContent || '').trim();
+      var isConvHref = /free-estimate|\/contact(\.html)?$|#estimate|#quote|#contact/.test(href);
+      if (isConvHref || (CTA_TXT.test(txt) && el.classList.contains('btn'))) {
+        el.setAttribute('data-lead-open', '1');
+        el.addEventListener('click', openPopup);
+      }
+    });
+    document.querySelectorAll('[data-lead-open]').forEach(function (el) {
+      if (!el.__ppBound) { el.__ppBound = 1; el.addEventListener('click', openPopup); }
+    });
+    // Obs: o FAB flutuante de ligação (.float-call) já existe no HTML de todas as páginas,
+    // com o número de rastreamento correto por tipo de página (SEO/blog vs site).
+  })();
 
   document.querySelectorAll('form[data-step-form]').forEach(initStepForm);
 
