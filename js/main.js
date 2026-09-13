@@ -279,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (el.closest('form') || el.closest('.pp-modal')) return;      // não mexe em botões de form/popup
       var href = (el.getAttribute('href') || '').toLowerCase();
       if (href.indexOf('tel:') === 0 || href.indexOf('mailto:') === 0) return; // ligação/email seguem
+      if (href.charAt(0) === '#') return; // âncora interna (ex: #lead): rola até o form inline, não abre popup
       var txt = (el.textContent || '').trim();
       var isConvHref = /free-estimate|\/contact(\.html)?$|#estimate|#quote|#contact/.test(href);
       if (isConvHref || (CTA_TXT.test(txt) && el.classList.contains('btn'))) {
@@ -366,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       } catch (error) {
         console.error(error);
-        alert('We could not send your request right now. Please call Premium Pro Contractors at +1 (617) 501-2989 or email contact@premiumprocontractors.com.');
+        alert('We could not send your request right now. Please call Premium Pro Contractors at (978) 354-7573 or email contact@premiumprocontractors.com.');
         if (button) {
           button.disabled = false;
           button.textContent = originalText;
