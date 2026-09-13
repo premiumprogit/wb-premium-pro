@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     return {
       lead_type: isCall ? 'call' : 'form',
-      name: (formData.get('name') || (isCall ? 'Call request' : '')).toString().trim(),
+      name: (formData.get('name') || (isCall ? ('Call lead ' + (formData.get('phone') || '').toString().trim()) : '')).toString().trim(),
       email: (formData.get('email') || '').toString().trim(),
       phone: normalizePhone(formData.get('phone')),
       address: (formData.get('address') || '').toString().trim(),
@@ -305,18 +305,17 @@ document.addEventListener('DOMContentLoaded', function () {
     ov.innerHTML = '<div class="pp-modal" role="dialog" aria-modal="true" aria-label="Request a call back">' +
       '<button class="pp-close" type="button" aria-label="Close">&times;</button>' +
       '<div class="lead-card" style="padding:26px 22px">' +
-        '<div class="lead-card__title">Request a Call Back</div>' +
-        '<div class="lead-card__sub">Leave your number and Premium Pro Contractors will call you right back. No wait, no phone tree.</div>' +
+        '<div class="lead-card__title">Call Premium Pro</div>' +
+        '<div class="lead-card__sub">Enter your number and we\'ll connect the call now.</div>' +
         '<form data-feedback data-lead-call action="#" method="POST">' +
-          '<div class="form__field"><label for="pc-name">Your name *</label><input type="text" id="pc-name" name="name" required placeholder="John Smith" autocomplete="name"></div>' +
-          '<div class="form__field"><label for="pc-phone">Best number to call *</label><input type="tel" id="pc-phone" name="phone" required placeholder="(617) 555-0100" autocomplete="tel"></div>' +
-          '<p class="form__note">By submitting, you agree to our <a href="/privacy-policy">Privacy Policy</a> and <a href="/terms">Terms &amp; Conditions</a>. We use your number only to call you back about your project.</p>' +
-          '<div class="form-nav"><button class="btn btn--primary btn--block" type="submit">Request my call</button></div>' +
+          '<div class="form__field"><label for="pc-phone">Your phone number *</label><input type="tel" id="pc-phone" name="phone" required placeholder="(617) 555-0100" autocomplete="tel"></div>' +
+          '<p class="form__note">We use your number only to connect and follow up on your call.</p>' +
+          '<div class="form-nav"><button class="btn btn--primary btn--block" type="submit">Call now</button></div>' +
         '</form>' +
         '<div class="form__success" style="display:none;padding:20px 0;text-align:center;">' +
-          '<p style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:8px;">Got it. We\'ll call you shortly.</p>' +
-          '<p>Claudiney or our team will call you back as soon as possible. Prefer to talk now?</p>' +
-          '<div class="form__quick-actions"><a class="btn btn--primary btn--block" data-direct-dial="1" href="tel:' + num + '">Call ' + disp + ' now</a></div>' +
+          '<p style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:8px;">Connecting your call…</p>' +
+          '<p>If the call does not start automatically, tap below.</p>' +
+          '<div class="form__quick-actions"><a class="btn btn--primary btn--block" data-direct-dial="1" href="tel:' + num + '">Call ' + disp + '</a></div>' +
         '</div>' +
       '</div></div>';
     document.body.appendChild(ov);
@@ -364,6 +363,11 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
           form.style.display = 'none';
           if (msg) msg.style.display = 'block';
+        }
+        // Lead de ligação: número já foi pro CRM como "call"; agora disca direto.
+        if (form.hasAttribute('data-lead-call')) {
+          var callNum = (window.MG_CALL_NUMBER || '+19783547573');
+          setTimeout(function () { window.location.href = 'tel:' + callNum; }, 200);
         }
       } catch (error) {
         console.error(error);
