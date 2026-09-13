@@ -97,14 +97,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const formData = new FormData(form);
     const params = new URLSearchParams(window.location.search);
     const platform = detectLeadPlatform();
+    const isCall = !!(form && form.hasAttribute('data-lead-call'));
 
     return {
-      name: (formData.get('name') || '').toString().trim(),
+      lead_type: isCall ? 'call' : 'form',
+      name: (formData.get('name') || (isCall ? 'Call request' : '')).toString().trim(),
       email: (formData.get('email') || '').toString().trim(),
       phone: normalizePhone(formData.get('phone')),
       address: (formData.get('address') || '').toString().trim(),
       city: (formData.get('city') || '').toString().trim(),
-      service: (formData.get('service') || '').toString().trim(),
+      service: (formData.get('service') || (isCall ? 'Requested a call back' : '')).toString().trim(),
       budget: (formData.get('budget') || '').toString().trim(),
       timeline: (formData.get('timeline') || '').toString().trim(),
       contact_preference: (formData.get('contact_preference') || '').toString().trim(),
@@ -116,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
       FONTE: window.location.href,
       source: (window.MG_LEAD_SOURCE || 'site'),
       source_detail: 'premiumprocontractors.com',
-      tags: [(window.MG_LEAD_SOURCE || 'site'), 'premium pro', platform === 'ORGANIC' ? 'lp organic' : 'lp ' + platform.toLowerCase()],
+      tags: [(window.MG_LEAD_SOURCE || 'site'), 'premium pro', platform === 'ORGANIC' ? 'lp organic' : 'lp ' + platform.toLowerCase()].concat(isCall ? ['call', 'ligacao', 'callback'] : []),
       pipeline_stage: 'Novos leads',
       page_name: document.title,
       page_path: window.location.pathname,
@@ -237,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
       '<div class="form__success" style="display:none;padding:20px 0;text-align:center;">' +
         '<p style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:8px;">Request received.</p>' +
         '<p>Claudiney or our team will reach out within 24 hours. If you prefer to speak with us now, you can call directly.</p>' +
-        '<div class="form__quick-actions"><a class="btn btn--primary btn--block" href="tel:' + (window.MG_CALL_NUMBER || '+19783547573') + '">Call Premium Pro</a></div>' +
+        '<div class="form__quick-actions"><a class="btn btn--primary btn--block" data-direct-dial="1" href="tel:' + (window.MG_CALL_NUMBER || '+19783547573') + '">Call Premium Pro</a></div>' +
       '</div>';
   }
 
@@ -289,6 +291,52 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     // Obs: o FAB flutuante de ligação (.float-call) já existe no HTML de todas as páginas,
     // com o número de rastreamento correto por tipo de página (SEO/blog vs site).
+  })();
+
+  /* ── Call-back popup (TODO botão de ligação captura o número → CRM como "ligação") ── */
+  (function initCallPopup() {
+    if (document.getElementById('ppCallOverlay')) return;
+    var num = (window.MG_CALL_NUMBER || '+19783547573');
+    var disp = num.replace(/^\+1/, '').replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+    var ov = document.createElement('div');
+    ov.className = 'pp-overlay';
+    ov.id = 'ppCallOverlay';
+    ov.innerHTML = '<div class="pp-modal" role="dialog" aria-modal="true" aria-label="Request a call back">' +
+      '<button class="pp-close" type="button" aria-label="Close">&times;</button>' +
+      '<div class="lead-card" style="padding:26px 22px">' +
+        '<div class="lead-card__title">Request a Call Back</div>' +
+        '<div class="lead-card__sub">Leave your number and Premium Pro Contractors will call you right back. No wait, no phone tree.</div>' +
+        '<form data-feedback data-lead-call action="#" method="POST">' +
+          '<div class="form__field"><label for="pc-name">Your name *</label><input type="text" id="pc-name" name="name" required placeholder="John Smith" autocomplete="name"></div>' +
+          '<div class="form__field"><label for="pc-phone">Best number to call *</label><input type="tel" id="pc-phone" name="phone" required placeholder="(617) 555-0100" autocomplete="tel"></div>' +
+          '<p class="form__note">By submitting, you agree to our <a href="/privacy-policy">Privacy Policy</a> and <a href="/terms">Terms &amp; Conditions</a>. We use your number only to call you back about your project.</p>' +
+          '<div class="form-nav"><button class="btn btn--primary btn--block" type="submit">Request my call</button></div>' +
+        '</form>' +
+        '<div class="form__success" style="display:none;padding:20px 0;text-align:center;">' +
+          '<p style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:8px;">Got it. We\'ll call you shortly.</p>' +
+          '<p>Claudiney or our team will call you back as soon as possible. Prefer to talk now?</p>' +
+          '<div class="form__quick-actions"><a class="btn btn--primary btn--block" data-direct-dial="1" href="tel:' + num + '">Call ' + disp + ' now</a></div>' +
+        '</div>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    function openCall(e) { if (e) e.preventDefault(); ov.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closeCall() { ov.classList.remove('open'); document.body.style.overflow = ''; }
+    ov.querySelector('.pp-close').addEventListener('click', closeCall);
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeCall(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCall(); });
+    window.PP_openCallPopup = openCall;
+
+    // TODOS os botões de ligação abrem o popup — exceto os links de discagem direta (estado de sucesso)
+    var callTxt = /\bcall\b|\bcall us\b|call now|call back|ligar|☎/i;
+    Array.prototype.forEach.call(document.querySelectorAll('a, button'), function (el) {
+      if (el.closest('.pp-modal') || el.closest('.form__success')) return;   // dentro de popup/sucesso: não intercepta
+      if (el.getAttribute('data-direct-dial')) return;                        // discagem direta explícita
+      var href = (el.getAttribute('href') || '').toLowerCase();
+      var txt = (el.textContent || '').trim();
+      var isTel = href.indexOf('tel:') === 0;
+      var isCallBtn = el.classList.contains('float-call') || (callTxt.test(txt) && (el.classList.contains('btn') || el.classList.contains('float-call')));
+      if ((isTel || isCallBtn) && !el.__pcBound) { el.__pcBound = 1; el.addEventListener('click', openCall); }
+    });
   })();
 
   document.querySelectorAll('form[data-step-form]').forEach(initStepForm);
