@@ -62,6 +62,31 @@ document.addEventListener('DOMContentLoaded', function () {
   const CRM_WEBHOOK_URL = window.PREMIUM_PRO_CRM_WEBHOOK_URL ||
     'https://mediagrowth-n8n.63kuy3.easypanel.host/webhook/premium-pro-site-lead';
 
+  /* ── Rastreamento Google Ads/UTM: captura na chegada e persiste (first-touch) ──
+     gclid/gbraid/wbraid sobrevivem entre cliques/páginas via sessionStorage, para
+     chegarem ao CRM mesmo quando o lead navega antes de enviar o formulário. */
+  var TRACK_KEYS = ['gclid', 'gbraid', 'wbraid', 'fbclid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+  (function persistTrackingParams() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var store = JSON.parse(sessionStorage.getItem('ppTracking') || '{}');
+      var changed = false;
+      TRACK_KEYS.forEach(function (k) {
+        var v = params.get(k);
+        if (v && !store[k]) { store[k] = v; changed = true; } // first-touch: não sobrescreve
+      });
+      if (changed || !sessionStorage.getItem('ppTracking')) {
+        sessionStorage.setItem('ppTracking', JSON.stringify(store));
+      }
+    } catch (e) { /* sessionStorage indisponível: segue sem persistir */ }
+  })();
+  function getTrackingParam(key) {
+    var live = new URLSearchParams(window.location.search).get(key);
+    if (live) return live;
+    try { return (JSON.parse(sessionStorage.getItem('ppTracking') || '{}')[key]) || ''; }
+    catch (e) { return ''; }
+  }
+
   function detectLeadPlatform() {
     const url = window.location.href.toLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -122,11 +147,15 @@ document.addEventListener('DOMContentLoaded', function () {
       pipeline_stage: 'Novos leads',
       page_name: document.title,
       page_path: window.location.pathname,
-      utm_source: params.get('utm_source') || '',
-      utm_medium: params.get('utm_medium') || '',
-      utm_campaign: params.get('utm_campaign') || '',
-      utm_content: params.get('utm_content') || '',
-      utm_term: params.get('utm_term') || ''
+      utm_source: getTrackingParam('utm_source'),
+      utm_medium: getTrackingParam('utm_medium'),
+      utm_campaign: getTrackingParam('utm_campaign'),
+      utm_content: getTrackingParam('utm_content'),
+      utm_term: getTrackingParam('utm_term'),
+      gclid: getTrackingParam('gclid'),
+      gbraid: getTrackingParam('gbraid'),
+      wbraid: getTrackingParam('wbraid'),
+      fbclid: getTrackingParam('fbclid')
     };
   }
 
