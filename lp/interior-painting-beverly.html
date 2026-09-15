@@ -69,6 +69,9 @@
   <script src="/mg-analytics.js" defer></script>
   <style>
     /* LP-only tweaks: enxuto e focado em conversão */
+    html{overflow-x:hidden}
+    /* footer nunca estoura no mobile (o style inline de colunas nao colapsa sozinho) */
+    @media(max-width:768px){.footer__grid{grid-template-columns:1fr!important}}
     .lp-header{background:var(--black);color:var(--white);position:sticky;top:0;z-index:100;border-bottom:1px solid var(--black-line)}
     .lp-header__row{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:14px 0}
     .lp-header__logo{width:200px;flex-shrink:0}
