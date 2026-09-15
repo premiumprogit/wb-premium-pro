@@ -383,7 +383,16 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       try {
-        await sendLeadToCrm(buildLeadPayload(form));
+        var _leadPayload = buildLeadPayload(form);
+        await sendLeadToCrm(_leadPayload);
+        // LP de anúncio: redireciona pra página de obrigado (dispara a conversão de página do Google Ads)
+        if (window.MG_THANKYOU_URL && !form.hasAttribute('data-lead-call')) {
+          var _q = [];
+          if (_leadPayload.service) _q.push('service=' + encodeURIComponent(_leadPayload.service));
+          if (_leadPayload.city) _q.push('city=' + encodeURIComponent(_leadPayload.city));
+          window.location.href = window.MG_THANKYOU_URL + (_q.length ? ('?' + _q.join('&')) : '');
+          return;
+        }
         if (msg && form.contains(msg)) {
           Array.prototype.forEach.call(form.children, function (child) {
             if (child !== msg) child.style.display = 'none';
