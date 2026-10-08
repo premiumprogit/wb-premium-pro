@@ -2,6 +2,34 @@
    PREMIUM PRO CONTRACTORS — main.js
    ============================================ */
 
+/* ── Meta Pixel (1307636911301905): eventos com eventID p/ dedupe (CAPI) ── */
+window.mgMetaEventId = function (prefix) {
+  return (prefix || 'ev') + '.' + Date.now() + '.' + Math.random().toString(36).slice(2, 10);
+};
+window.mgMetaTrack = function (name, params, eventId) {
+  try {
+    if (typeof window.fbq !== 'function') return null;
+    var eid = eventId || window.mgMetaEventId(name.toLowerCase());
+    window.fbq('track', name, params || {}, { eventID: eid });
+    return eid;
+  } catch (err) { return null; }
+};
+(function initMetaContactClicks() {
+  var lastAt = 0;
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    var href = (a.getAttribute('href') || '').toLowerCase();
+    var method = href.indexOf('tel:') === 0 ? 'phone'
+      : (href.indexOf('wa.me/') !== -1 || href.indexOf('api.whatsapp.com') !== -1 || href.indexOf('whatsapp://') === 0) ? 'whatsapp' : '';
+    if (!method) return;
+    var now = Date.now();
+    if (now - lastAt < 1500) return;
+    lastAt = now;
+    window.mgMetaTrack('Contact', { contact_method: method, lead_source: (window.MG_LEAD_SOURCE || 'site') });
+  }, true);
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
 
   /* ── Mobile Menu ── */
@@ -130,8 +158,8 @@ document.addEventListener('DOMContentLoaded', function () {
       email: (formData.get('email') || '').toString().trim(),
       phone: normalizePhone(formData.get('phone')),
       address: (formData.get('address') || '').toString().trim(),
-      city: (formData.get('city') || '').toString().trim(),
-      service: (formData.get('service') || (isCall ? 'Requested a call back' : '')).toString().trim(),
+      city: (formData.get('city') || window.MG_LEAD_CITY || '').toString().trim(),
+      service: (formData.get('service') || window.MG_LEAD_SERVICE || (isCall ? 'Requested a call back' : '')).toString().trim(),
       budget: (formData.get('budget') || '').toString().trim(),
       timeline: (formData.get('timeline') || '').toString().trim(),
       contact_preference: (formData.get('contact_preference') || '').toString().trim(),
@@ -143,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
       FONTE: window.location.href,
       source: (window.MG_LEAD_SOURCE || 'site'),
       source_detail: 'premiumprocontractors.com',
-      tags: [(window.MG_LEAD_SOURCE || 'site'), 'premium pro', platform === 'ORGANIC' ? 'lp organic' : 'lp ' + platform.toLowerCase()].concat(isCall ? ['call', 'ligacao', 'callback'] : []),
+      tags: [(window.MG_LEAD_SOURCE || 'site'), 'premium pro', platform === 'ORGANIC' ? 'lp organic' : 'lp ' + platform.toLowerCase()].concat(window.MG_LEAD_SERVICE ? [window.MG_LEAD_SERVICE] : []).concat(window.MG_LEAD_CITY ? [window.MG_LEAD_CITY] : []).concat(isCall ? ['call', 'ligacao', 'callback'] : []),
       pipeline_stage: 'Novos leads',
       page_name: document.title,
       page_path: window.location.pathname,
@@ -385,14 +413,17 @@ document.addEventListener('DOMContentLoaded', function () {
       try {
         var _leadPayload = buildLeadPayload(form);
         await sendLeadToCrm(_leadPayload);
+        var _metaLeadId = window.mgMetaEventId('lead');
+        var _metaLeadParams = { lead_type: _leadPayload.lead_type, content_name: _leadPayload.service || '', lead_source: _leadPayload.source || 'site' };
         // LP de anúncio: redireciona pra página de obrigado (dispara a conversão de página do Google Ads)
         if (window.MG_THANKYOU_URL && !form.hasAttribute('data-lead-call')) {
-          var _q = [];
+          var _q = ['eid=' + encodeURIComponent(_metaLeadId)];
           if (_leadPayload.service) _q.push('service=' + encodeURIComponent(_leadPayload.service));
           if (_leadPayload.city) _q.push('city=' + encodeURIComponent(_leadPayload.city));
           window.location.href = window.MG_THANKYOU_URL + (_q.length ? ('?' + _q.join('&')) : '');
           return;
         }
+        window.mgMetaTrack('Lead', _metaLeadParams, _metaLeadId);
         if (msg && form.contains(msg)) {
           Array.prototype.forEach.call(form.children, function (child) {
             if (child !== msg) child.style.display = 'none';

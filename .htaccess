@@ -1,3 +1,24 @@
+# --- Performance (Kevin 2026-09-27): cache do navegador. Brotli/gzip ja vem do LiteSpeed. ---
+AddType font/woff2 .woff2
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType image/webp "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+  ExpiresByType image/x-icon "access plus 30 days"
+  ExpiresByType video/mp4 "access plus 30 days"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.woff2$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(webp|jpe?g|png|svg|ico|mp4)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+</IfModule>
+
 Options -MultiViews
 RewriteEngine On
 
@@ -16,6 +37,21 @@ RewriteRule ^services/home-remodeling-lynnfield/?$ /service-areas/lynnfield [R=3
 RewriteRule ^services/home-remodeling-peabody/?$ /service-areas/peabody [R=301,L]
 RewriteRule ^services/home-remodeling-middleton/?$ /service-areas/middleton [R=301,L]
 RewriteRule ^services/painting-company-peabody/?$ /services/interior-painting [R=301,L]
+# Consolidate interior-painting-peabody into the strong house-painters-peabody page
+# (kills interior vs house painting cannibalization on Peabody — Kevin 2026-09-21)
+RewriteRule ^services/interior-painting-peabody/?$ /services/house-painters-peabody [R=301,L]
+
+# --- Barra no fim (MediaGrowth 23-09-26): pagina servida em /x/ quebra os caminhos relativos (../css, ../js,
+# css/style.css) = sem estilo e SEM formulario (lead perdido). /service-areas/ vai pro hub sem barra; qualquer
+# outro /x/ que nao seja pasta real vai pra /x (301). ---
+RewriteRule ^service-areas/$ /service-areas [R=301,L]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)/$ /$1 [R=301,L]
+
+# --- Hub /service-areas: existe a pasta service-areas/ com o mesmo nome, entao
+# o mod_dir faz 301 -> /service-areas/ -> 403 (dir sem index). Servir o arquivo
+# service-areas.html direto (200), antes do DirectorySlash agir. ---
+RewriteRule ^service-areas/?$ /service-areas.html [L]
 
 # Serve clean SEO URLs such as /services/kitchen-remodeling
 # from the existing static HTML files.

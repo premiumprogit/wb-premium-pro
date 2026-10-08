@@ -2,6 +2,9 @@
    PREMIUM PRO CONTRACTORS — Master Stylesheet
    ============================================ */
 
+/* perf 2026-09-27: fonte reserva com metricas do Montserrat (evita salto de layout e LCP tardio na troca da fonte) */
+@font-face { font-family: 'Montserrat Fallback'; src: local('Arial'), local('ArialMT'), local('Helvetica'); size-adjust: 113.39%; ascent-override: 84.95%; descent-override: 22.03%; line-gap-override: 0%; }
+
 :root {
   --black: #0A0A0A;
   --black-soft: #161616;
@@ -18,7 +21,7 @@
   --gray-500: #737373;
   --gray-700: #404040;
 
-  --font: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font: 'Montserrat', 'Montserrat Fallback', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 
   --container: 1240px;
   --section-py: 96px;
